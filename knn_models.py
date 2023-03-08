@@ -111,15 +111,37 @@ class KnnClassifierNumba:
 
         return dist_matrix
 
+    @staticmethod
+    def select_class(classes, dists):
+        labels, label_cnt = np.unique(classes, return_counts=True)
+        if sum(label_cnt == label_cnt.max()) > 1:
+            top_labels = labels[label_cnt == label_cnt.max()]
+            top_label_dists = []
+            for top_label in top_labels:
+                top_label_dists.append(dists[classes == top_label].sum())
+            return top_labels[np.argmin(top_label_dists)]
+        else:
+            return labels[np.argmax(label_cnt)]
+
     def predict(self, pred_data):
         result = []
 
         dist_matrix = self.calc_dist_matrix(pred_data)
 
         for x in dist_matrix:
-            top_k_labels = self.labels[np.argpartition(x, self.k)[:self.k]]
-            result.append(np.argmax(np.bincount(top_k_labels.astype(int))))
+            inds = np.argpartition(x, self.k)[:self.k]
+            result.append(self.select_class(self.labels[inds], x[inds]))
         return np.array(result)
+
+    # def predict(self, pred_data):
+    #     result = []
+    #
+    #     dist_matrix = self.calc_dist_matrix(pred_data)
+    #
+    #     for x in dist_matrix:
+    #         top_k_labels = self.labels[np.argpartition(x, self.k)[:self.k]]
+    #         result.append(np.argmax(np.bincount(top_k_labels.astype(int))))
+    #     return np.array(result)
 
     def loocv(self, recalculate_matrix=True):
         if recalculate_matrix:
@@ -127,8 +149,8 @@ class KnnClassifierNumba:
         result = []
         for i, x in enumerate(self.dist_matrix):
             x = np.delete(x, i)
-            top_k_labels = np.delete(self.labels, i)[np.argpartition(x, self.k)[:self.k]]
-            result.append(np.argmax(np.bincount(top_k_labels.astype(int))))
+            inds = np.argpartition(x, self.k)[:self.k]
+            result.append(self.select_class(np.delete(self.labels, i)[inds], x[inds]))
 
         return np.mean(np.array(result) == self.labels)
 
