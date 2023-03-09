@@ -17,7 +17,7 @@ x_test, y_test = test[:, 1:], test[:, 0]
 x_test = np.array([hog(x.reshape(28, 28), pixels_per_cell=(6, 6),
                        channel_axis=None) for x in x_test])
 
-metrics = {'metric': 'minkowski', 'p': 11}
+metrics = {'metric': 'minkowski', 'p': 2}
 
 knn_model = KnnClassifierNumba(k=4, **metrics)
 

@@ -1,5 +1,4 @@
 import numpy as np
-import math
 import numba
 from scipy.spatial.distance import cdist
 
@@ -14,9 +13,6 @@ def euclidean(vector1, vector2):
 def minkowski(vector1, vector2, p=10):
     dist = sum([abs(a - b) ** p for a, b in zip(vector1, vector2)]) ** (1 / p)
     return dist
-
-
-from numpy.linalg import norm
 
 
 @numba.jit(nopython=True)
@@ -38,10 +34,8 @@ def euclidean_dataset(xa, xb):
     dim1, dim2 = xa.shape[0], xb.shape[0]
     calcs = np.empty(shape=(dim1, dim2), dtype=np.float32)
     for i in numba.prange(dim1):
-        for j in numba.prange(i, dim2):
-            dist = euclidean(xa[i], xb[j])
-            calcs[i][j] = dist
-            calcs[j][i] = dist
+        for j in numba.prange(dim2):
+            calcs[i][j] = euclidean(xa[i], xb[j])
     return calcs
 
 
@@ -49,11 +43,10 @@ def euclidean_dataset(xa, xb):
 def minkowski_dataset(xa, xb, p=2):
     dim1, dim2 = xa.shape[0], xb.shape[0]
     calcs = np.empty(shape=(dim1, dim2), dtype=np.float32)
+
     for i in numba.prange(dim1):
-        for j in numba.prange(i, dim2):
-            dist = minkowski(xa[i], xb[j], p=p)
-            calcs[i][j] = dist
-            calcs[j][i] = dist
+        for j in numba.prange(dim2):
+            calcs[i][j] = minkowski(xa[i], xb[j])
     return calcs
 
 
@@ -61,11 +54,10 @@ def minkowski_dataset(xa, xb, p=2):
 def cosine_dataset(xa, xb):
     dim1, dim2 = xa.shape[0], xb.shape[0]
     calcs = np.empty(shape=(dim1, dim2), dtype=np.float32)
+
     for i in numba.prange(dim1):
-        for j in numba.prange(i, dim2):
-            dist = cosine(xa[i], xb[j])
-            calcs[i][j] = dist
-            calcs[j][i] = dist
+        for j in numba.prange(dim2):
+            calcs[i][j] = cosine(xa[i], xb[j])
     return calcs
 
 
@@ -74,10 +66,8 @@ def correlation_dataset(xa, xb):
     dim1, dim2 = xa.shape[0], xb.shape[0]
     calcs = np.empty(shape=(dim1, dim2), dtype=np.float32)
     for i in numba.prange(dim1):
-        for j in numba.prange(i, dim2):
-            dist = correlation(xa[i], xb[j])
-            calcs[i][j] = dist
-            calcs[j][i] = dist
+        for j in numba.prange(dim2):
+            calcs[i][j] = correlation(xa[i], xb[j])
     return calcs
 
 
@@ -126,22 +116,12 @@ class KnnClassifierNumba:
     def predict(self, pred_data):
         result = []
 
-        dist_matrix = self.calc_dist_matrix(pred_data)
+        self.dist_matrix = self.calc_dist_matrix(pred_data)
 
-        for x in dist_matrix:
+        for x in self.dist_matrix:
             inds = np.argpartition(x, self.k)[:self.k]
             result.append(self.select_class(self.labels[inds], x[inds]))
         return np.array(result)
-
-    # def predict(self, pred_data):
-    #     result = []
-    #
-    #     dist_matrix = self.calc_dist_matrix(pred_data)
-    #
-    #     for x in dist_matrix:
-    #         top_k_labels = self.labels[np.argpartition(x, self.k)[:self.k]]
-    #         result.append(np.argmax(np.bincount(top_k_labels.astype(int))))
-    #     return np.array(result)
 
     def loocv(self, recalculate_matrix=True):
         if recalculate_matrix:

@@ -4,31 +4,29 @@ import time
 import numpy as np
 from skimage.feature import hog
 
-train = np.genfromtxt('../MNIST_train_small.csv', delimiter=',')
+train = np.genfromtxt('../MNIST_train.csv', delimiter=',')
 
 x_train, y_train = train[:, 1:], train[:, 0]
 
 x_train = np.array([hog(x.reshape(28, 28), pixels_per_cell=(6, 6),
                         channel_axis=None) for x in x_train])
 
-print(x_train[0].shape)
-
 metrics = {'metric': 'minkowski', 'p': 2}
-
-loocv_accuracy = []
 
 knn_model = KnnClassifierNumba(**metrics)
 
 start = time.time()
 
 knn_model.fit(x_train, y_train)
+best_k = (0, 0)
 for k in range(1, 21):
     knn_model.set_k(k)
     print('K =', k)
 
-    loocv_accuracy.append((k, knn_model.loocv(recalculate_matrix=False if k > 1 else True)))
-    print('Loocv accuracy:', loocv_accuracy[-1][-1])
+    loocv_res = knn_model.loocv(recalculate_matrix=False if k > 1 else True)
+    if best_k[1] < loocv_res:
+        best_k = (k, loocv_res)
+    print('Loocv accuracy:', loocv_res)
 
-print(time.time() - start)
-best_set = sorted(loocv_accuracy, key=lambda x: x[1])[-1]
-print("Best set: k = {k}, loocv accuracy = {loocv}".format(k=best_set[0], loocv=best_set[1]))
+print('Time spent:', time.time() - start)
+print("Best set: k = {k}, loocv accuracy = {loocv}".format(k=best_k[0], loocv=best_k[1]))
